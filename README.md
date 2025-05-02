@@ -19,9 +19,11 @@
 
 之后运行节点端即可(放哪里都行)
 
-节点端安装: `wget --no-check-certificate -O ddns.sh https://raw.githubusercontent.com/chunkburst/ddns-worker/refs/heads/main/src/ddns.sh && chmod +x ddns.sh && ./ddns.sh`
+节点端安装: `wget --no-check-certificate -O ddns.sh https://raw.githubusercontent.com/chunkburst/ddns-worker/refs/heads/main/src/ddns.sh && chmod +x ddns.sh`
 
-执行后会自动加入定时任务
+修改 `ddns.sh` 文件内的配置后执行： `./ddns.sh`
+
+(执行后会自动加入定时任务)
 
 
 
