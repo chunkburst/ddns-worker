@@ -5,8 +5,11 @@
 
 满足精神洁癖和Key洁癖需求的迷你DDNS脚本~
 
-
 ## Install
+
+教程地址：[点我传送](https://linux.do/t/topic/617539)
+
+
 
 ### Windows
 
