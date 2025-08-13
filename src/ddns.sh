@@ -8,6 +8,7 @@ SUBDOMAIN_PREFIX="hello" #域名前缀
 CF_ZONE_NAME="autoccb.ccb" #主域名
 RECORD_TYPE="A" #类型,V4写A,V6写AAAA
 UPDATE_FREQUENCY="15" #更新频率,每多少分钟自动检测一次
+NODE_NAME="主节点" #节点名称,用于标识当前所在节点
 
 # 自动检测IP
 if [ "$RECORD_TYPE" = "A" ]; then
@@ -41,7 +42,7 @@ echo "Updating $SUBDOMAIN_PREFIX.$CF_ZONE_NAME to $WAN_IP..."
 RESPONSE=$(curl -fsS -X POST "$API_BASE_URL" \
     -H "Authorization: Bearer $API_SECRET" \
     -H "Content-Type: application/json" \
-    -d "{\"prefix\":\"$SUBDOMAIN_PREFIX\",\"ip\":\"$WAN_IP\",\"zone_name\":\"$CF_ZONE_NAME\",\"type\":\"$RECORD_TYPE\"}")
+    -d "{\"prefix\":\"$SUBDOMAIN_PREFIX\",\"ip\":\"$WAN_IP\",\"zone_name\":\"$CF_ZONE_NAME\",\"type\":\"$RECORD_TYPE\",\"node_name\":\"$NODE_NAME\"}")
 
 
 if echo "$RESPONSE" | grep -q '"success":true'; then

@@ -11,7 +11,6 @@
 //TG_CHANNEL_ID: 频道的ID,发送消息用
 
 const HIDE_IP_SEGMENTS = true; // 设置为true时，隐藏IP的C段和D段（最后两段）
-const NODE_NAME = '主节点'; // 节点名称，用于标识当前DDNS服务所属节点
 
 function maskIPAddress(ip) {
     if (!HIDE_IP_SEGMENTS) {
@@ -43,7 +42,7 @@ export default {
         const auth = request.headers.get('Authorization');
         if(!auth || auth !== `Bearer ${env.API_SECRET}`) return new Response('Unauthorized', { status: 501 });
   
-        const { prefix, ip, type = 'A', ttl, zone_name } = await request.json();
+        const { prefix, ip, type = 'A', ttl, zone_name, node_name } = await request.json();
         
         if(!prefix || !ip) return new Response('Bad Gateway: prefix and ip are required', { status: 502 });
         const recordType = (type.toUpperCase() === 'AAAA') ? 'AAAA' : 'A';
@@ -121,7 +120,8 @@ export default {
             });
         
         const action = recordId ? 'updated' : 'created';
-        await sendTelegramNotification(env, action, prefix, ip);
+        const nodeName = node_name || DEFAULT_NODE_NAME;
+        await sendTelegramNotification(env, action, prefix, ip, nodeName);
 
         return new Response(JSON.stringify({
             success: true,
@@ -134,7 +134,7 @@ export default {
     }
 }
 
-async function sendTelegramNotification(env, action, recordName, ip) {
+async function sendTelegramNotification(env, action, recordName, ip, nodeName) {
     if(action == 'updated') action = '更新';
     else action = '创建';
     
@@ -142,7 +142,7 @@ async function sendTelegramNotification(env, action, recordName, ip) {
     const displayIP = maskIPAddress(ip);
     
     const message = `🚀 CCB-DDNS
-- 节点名称: ${NODE_NAME}
+- 节点名称: ${nodeName}
 - 记录变更: ${action.toUpperCase()}
 - 记录名称: ${recordName}
 - 新 IP: ${displayIP}`;

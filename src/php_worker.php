@@ -14,9 +14,77 @@ define('CF_ZONE_NAME', 'autoccb.ccb'); //主域名
 define('API_KEY', 'apikey'); //客户端验证密钥(通信密钥)
 define('DEFAULT_TTL', 1); //默认ttl,如果客户端不传递ttl就会使用此参数(1在CF代表auto)
 
+// 内部常量配置
+define('HIDE_IP_SEGMENTS', true); // 设置为true时，隐藏IP的C段和D段（最后两段）
+define('DEFAULT_NODE_NAME', '主节点'); // 默认节点名称，如果客户端未提供则使用此值
+
 //[不知道这两个是干什么的可以无视]
 define('CACHE_CF_RECORD_ID', true); //是否开启record_id缓存(可减少与CF的通信次数)
 define('CACHE_FILE_NAME', 'cf_cache.db'); //缓存文件名
+
+// IP地址隐藏处理函数
+function maskIPAddress($ip) {
+    if (!HIDE_IP_SEGMENTS) {
+        return $ip;
+    }
+    
+    // 处理IPv4地址
+    if (strpos($ip, '.') !== false) {
+        $segments = explode('.', $ip);
+        if (count($segments) === 4) {
+            return $segments[0] . '.' . $segments[1] . '.*.*';
+        }
+    }
+    
+    // 处理IPv6地址（隐藏最后4段）
+    if (strpos($ip, ':') !== false) {
+        $segments = explode(':', $ip);
+        if (count($segments) >= 4) {
+            $visiblePart = implode(':', array_slice($segments, 0, count($segments) - 4));
+            return $visiblePart . ':****:****:****:****';
+        }
+    }
+    
+    return $ip;
+}
+
+// Telegram通知函数（如果需要的话）
+function sendTelegramNotification($action, $recordName, $ip, $nodeName) {
+    // 如果没有配置Telegram，直接返回
+    if (!defined('TG_BOT_TOKEN') || !defined('TG_CHANNEL_ID')) {
+        return;
+    }
+    
+    $action = ($action == 'updated') ? '更新' : '创建';
+    $displayIP = maskIPAddress($ip);
+    
+    $message = "🚀 CCB-DDNS\n";
+    $message .= "- 节点名称: {$nodeName}\n";
+    $message .= "- 记录变更: " . strtoupper($action) . "\n";
+    $message .= "- 记录名称: {$recordName}\n";
+    $message .= "- 新 IP: {$displayIP}";
+    
+    $telegramUrl = "https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage";
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $telegramUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'chat_id' => TG_CHANNEL_ID,
+        'text' => $message,
+        'parse_mode' => 'Markdown'
+    ]));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    $data = json_decode($response, true);
+    if (!$data['ok']) {
+        error_log('TG Error: ' . json_encode($data));
+    }
+}
 
 
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
@@ -33,6 +101,7 @@ $prefix = trim($data['prefix']);
 $ip = trim($data['ip']);
 $type = strtoupper($data['type'] ?? 'A');
 $ttl = (int)($data['ttl'] ?? DEFAULT_TTL);
+$nodeName = $data['node_name'] ?? DEFAULT_NODE_NAME;
 
 if($type !== 'A' && $type !== 'AAAA'){
     errno(503, ['error' => 'Error type']);
@@ -99,9 +168,13 @@ $caller = json_decode(request($baseApi, $pubHeader, [
 ]), true);
 
 if($caller['success']){
+    // 发送Telegram通知（如果配置了的话）
+    $action = $recordId ? 'updated' : 'created';
+    sendTelegramNotification($action, $recordName, $ip, $nodeName);
+    
     errno(200, [
         'success' => true,
-        'action'  => $recordId ? 'updated' : 'created',
+        'action'  => $action,
         'record'  => $caller['result']
     ]);
 }else{
