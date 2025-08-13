@@ -10,6 +10,32 @@
 //TG_BOT_TOKEN: BOT的token
 //TG_CHANNEL_ID: 频道的ID,发送消息用
 
+const HIDE_IP_SEGMENTS = true; // 设置为true时，隐藏IP的C段和D段（最后两段）
+const NODE_NAME = '主节点'; // 节点名称，用于标识当前DDNS服务所属节点
+
+function maskIPAddress(ip) {
+    if (!HIDE_IP_SEGMENTS) {
+        return ip;
+    }
+    
+    if (ip.includes('.')) {
+        const segments = ip.split('.');
+        if (segments.length === 4) {
+            return `${segments[0]}.${segments[1]}.*.*`;
+        }
+    }
+    
+    if (ip.includes(':')) {
+        const segments = ip.split(':');
+        if (segments.length >= 4) {
+            const visiblePart = segments.slice(0, segments.length - 4).join(':');
+            return `${visiblePart}:****:****:****:****`;
+        }
+    }
+    
+    return ip;
+}
+
 export default {
     async fetch(request, env){
         if(request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
@@ -111,10 +137,15 @@ export default {
 async function sendTelegramNotification(env, action, recordName, ip) {
     if(action == 'updated') action = '更新';
     else action = '创建';
+    
+    // 根据配置决定是否隐藏IP的最后两段
+    const displayIP = maskIPAddress(ip);
+    
     const message = `🚀 CCB-DDNS
+- 节点名称: ${NODE_NAME}
 - 记录变更: ${action.toUpperCase()}
 - 记录名称: ${recordName}
-- 新 IP: ${ip}`;
+- 新 IP: ${displayIP}`;
 
     const telegramUrl = `https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`;
     const response = await fetch(telegramUrl, {
