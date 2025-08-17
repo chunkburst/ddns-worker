@@ -20,7 +20,7 @@ function maskIPAddress(ip) {
     if (ip.includes('.')) {
         const segments = ip.split('.');
         if (segments.length === 4) {
-            return `${segments[0]}.${segments[1]}.*.*`;
+            return `${segments[0]}.${segments[1]}.x.x`;
         }
     }
     
@@ -28,7 +28,7 @@ function maskIPAddress(ip) {
         const segments = ip.split(':');
         if (segments.length >= 4) {
             const visiblePart = segments.slice(0, segments.length - 4).join(':');
-            return `${visiblePart}:****:****:****:****`;
+            return `${visiblePart}:xxxx:xxxx:xxxx:xxxx`;
         }
     }
     
